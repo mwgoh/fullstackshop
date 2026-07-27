@@ -1,0 +1,160 @@
+fullstackshop 세션 백업 — 2026-07-22
+(Claude Code /export 미지원으로 인해 세션 진행 내역을 수동으로 요약한 백업본입니다.
+원본 대화의 축약 요약이며, 도구 호출/타이핑 로그의 완전한 재현은 아닙니다.)
+
+===============================================================================
+1. Git 초기화 및 원격 저장소 연결
+===============================================================================
+- 실제 프로젝트 루트는 fullstackshop/fullstackshop 하위 폴더로 확인됨.
+- 해당 폴더에서 `git init` 실행.
+- `git remote add origin https://github.com/mwgoh/fullstackshop.git` 연결.
+- .gitignore에 .env* 가 이미 포함되어 있어 비밀값 노출 없이 안전하게 최초 커밋 진행.
+- 원격에 이미 존재하던 기본 스캐폴드(README "# fullstackshop", MIT LICENSE, .gitignore)와
+  `git merge origin/main --allow-unrelated-histories -X ours` 로 병합
+  (충돌 시 로컬 파일 우선, LICENSE만 새로 반영).
+- `git push -u origin main` 으로 GitHub main 브랜치에 반영 완료.
+
+===============================================================================
+2. initial.md — 프로젝트 아이디어 정리
+===============================================================================
+- 사용자 요청: "기본적인 쇼핑몰 개발에 필요한 대부분의 기본 정보"를 담되,
+  "MVP로 구현할 것이므로 너무 복잡하게 세부기능은 적지 말 것".
+- 결제 수단은 Stripe로 명시.
+- 최종 initial.md 구성:
+  - 개요 / 기술 스택(Next.js+Tailwind / Convex / Clerk / Stripe)
+  - MVP 핵심 기능 (구매자: 상품조회, 장바구니, 주문+Stripe결제, 로그인, 마이페이지 /
+    관리자: 상품 등록/수정/삭제, 주문 상태 변경)
+  - 기본 데이터 모델 (products, users, carts, orders)
+  - 결제(Stripe Checkout/Payment Intent + Webhook)
+  - MVP 범위 밖: 카테고리/검색/정렬, 리뷰, 위시리스트, 쿠폰, 알림 등
+- 부수 사건: 파일 경로 오타로 "vibe-코딩-attachments(final)"라는 잘못된 빈 폴더가
+  생성되어 사용자 확인 후 삭제, 올바른 경로("vibe-coding-attachments(final)")로 정리.
+
+===============================================================================
+3. tasks/tasks.json — 작업 관리 체계 수립
+===============================================================================
+- 사용자 요청: Convex는 _id/_creationTime을 자동 생성하므로 스키마 설계 시 주의,
+  이 정보를 바탕으로 /tasks/tasks.json을 만들어 서브태스크 단위로 진행상황을 추적하며
+  언제든 이어서 구현할 수 있도록 구성.
+- convex/_generated/ai/guidelines.md 확인 후 반영한 핵심 원칙(notes 필드에 기록):
+  - _id/_creationTime은 시스템 필드, 별도 id 필드 정의 금지
+  - 외래키는 v.id("tableName")
+  - 무한정 늘어나는 목록(장바구니/주문 아이템)은 배열이 아닌 별도 테이블+외래키로 분리
+  - 인덱스 이름은 포함 필드를 그대로 반영
+- 8개 메인 태스크 × 서브태스크로 구성 (각 id/status/description):
+  1. Convex 데이터 스키마 설계
+  2. 상품 기능 - 백엔드
+  3. 상품 기능 - 프론트엔드
+  4. 장바구니 기능
+  5. 주문 & Stripe 결제
+  6. 마이페이지 (주문 내역)
+  7. 관리자 기능
+  8. 마무리 및 점검
+- activeTaskId로 재개 지점을 계속 갱신.
+
+===============================================================================
+4. 구현 진행 내역 (Task별)
+===============================================================================
+
+--- Task 1. Convex 데이터 스키마 설계 (done) ---
+- convex/schema.ts: products, carts/cartItems, orders/orderItems 테이블 추가,
+  users에 role("customer"|"admin") 필드 추가.
+- 기존 dev 데이터(테스트 계정 1건)에 신규 필수 필드 role을 추가하며 스키마 검증 실패
+  → widen(optional) → backfill(convex/migrations.ts 임시 internalMutation 실행)
+  → narrow(required) 패턴으로 해결, 임시 마이그레이션 파일은 완료 후 삭제.
+- `npx convex dev --once`로 배포 검증.
+
+--- Task 2. 상품 기능 - 백엔드 (done) ---
+- convex/products.ts: list(활성 상품 페이지네이션), get(단건 조회),
+  create/update/remove(관리자 전용 mutation).
+- convex/users.ts에 requireAdmin 헬퍼 추가(getOrCreateUser + role==="admin" 체크).
+- v.object(...).fields / .partial().fields로 필드 정의 재사용.
+
+--- Task 3. 상품 기능 - 프론트엔드 (done) ---
+- components/ProductCard.tsx, app/products/page.tsx(usePaginatedQuery),
+  app/products/[id]/page.tsx.
+- Playwright로 실제 렌더링 확인(테스트 상품 생성 후 스크린샷, 콘솔 에러 없음),
+  확인 후 테스트 데이터 정리.
+
+--- Task 4. 장바구니 기능 (done) ---
+- convex/cart.ts: getMyCart, addItem(수량 누적), updateQuantity(0 이하시 삭제),
+  removeItem. requireOwnCartItem으로 소유권 검증.
+- app/cart/page.tsx, 상품상세 페이지에 담기 버튼 연동(app/products/[id]/page.tsx).
+- convex run --identity로 누적/수량변경/삭제/타인 접근 차단(및 Convex 트랜잭션
+  롤백으로 부작용 없음) 확인.
+
+--- Task 5. 주문 & Stripe 결제 (blocked — 5.1만 대기) ---
+- convex/orders.ts: createFromCart(장바구니→orders+orderItems 스냅샷 후 카트 비움),
+  getMyOrder, listMyOrders, setStripeSessionId, markOrderPaidBySessionId,
+  listAllForAdmin, updateStatus(관리자 전용).
+- convex/stripe.ts: createCheckoutSession(action), webhook(httpAction).
+  Stripe.createFetchHttpClient() / Stripe.createSubtleCryptoProvider() 사용해
+  Convex 기본(non-Node) 런타임에서 동작(별도 "use node" 불필요).
+  KRW는 zero-decimal 통화라 unit_amount를 원 단위 그대로 사용.
+- convex/http.ts에 /stripe-webhook 라우트 등록.
+- app/checkout/page.tsx, app/orders/[id]/page.tsx(useSearchParams + Suspense).
+- .env.local에 STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET / SITE_URL을
+  Convex 배포 환경변수로 설정하는 방법을 주석으로 안내.
+- 검증: 주문 생성 로직(총액 계산, 카트 비우기) 확인, STRIPE_SECRET_KEY 미설정 시
+  명확한 에러로 실패 확인, 배포된 웹훅 엔드포인트가 서명/시크릿 누락 시 400 응답 확인.
+- 남은 일(5.1, blocked): 실제 Stripe 테스트 키 발급 및
+  `npx convex env set STRIPE_SECRET_KEY/STRIPE_WEBHOOK_SECRET/SITE_URL` 등록은
+  사용자만 할 수 있어 대기 중.
+
+--- Task 6. 마이페이지 (주문 내역) (done) ---
+- orders.listMyOrders(by_userId, desc, paginate).
+- app/my/orders/page.tsx. 주문 상태 라벨은 lib/orderStatus.ts로 공용화
+  (orders/[id] 페이지와 공유, 중복 제거).
+
+--- Task 7. 관리자 기능 (done) ---
+- users.ts: requireAdminQuery(쿼리용), getMe(공개 쿼리, 현재 유저 role 확인용).
+- products.listAllForAdmin(비활성 포함 전체 조회).
+- orders.listAllForAdmin, orders.updateStatus(관리자 전용).
+- components/AdminGate.tsx: 로그인/역할 체크 후에만 children 렌더링
+  (클라이언트 UX 게이트, 실제 보안 경계는 서버의 requireAdmin*).
+- app/admin/products/page.tsx(등록 폼 + 행별 가격/재고/판매여부 인라인 수정·삭제),
+  app/admin/orders/page.tsx(목록 + 상태 select).
+- proxy.ts에 /admin(.*) 보호 경로 추가 → 미인증 시 Clerk 로그인으로 307 리다이렉트
+  (curl/Playwright로 확인).
+- convex run --identity로 비활성 상품 노출, 가격 수정, 관리자 주문 상태변경,
+  비관리자 접근 차단(에러) 모두 확인.
+- 개발자 본인 Clerk 계정(gmw0924@gmail.com)을 로컬 dev 배포에서 admin으로 승격해둠
+  (관리자 기능 테스트용, tasks.json notes에 기록).
+
+--- Task 8. 마무리 및 점검 (blocked — 8.3만 대기) ---
+- 8.1(done): 그동안 페이지 간 이동 수단이 전혀 없었던 문제를 발견 →
+  components/SiteHeader.tsx(상품/장바구니/주문내역/관리자 링크 + 로그인 버튼) 신설,
+  app/layout.tsx에 반영. 템플릿 그대로였던 홈(app/page.tsx)의 numbers 카운터 데모를
+  상품 목록으로 연결되는 랜딩 페이지로 교체(CLAUDE.md에 교체 대상으로 명시돼 있던 부분).
+  fire-and-forget이던 mutation 호출들(장바구니 수량변경/삭제, 상품상세 담기,
+  관리자 상품 저장/삭제, 관리자 주문 상태변경)에 try/catch + 인라인 에러 메시지 추가.
+- 8.2(done): 장바구니/체크아웃/주문상세/관리자 목록 행에 truncate·flex-wrap·
+  flex-col sm:flex-row 적용. Playwright로 375px(모바일)/1280px(데스크톱) 두 뷰포트에서
+  홈/상품목록/상품상세/장바구니/체크아웃/주문내역 6개 화면 스크린샷 +
+  document.scrollWidth 비교로 가로 스크롤(overflow) 없음, 콘솔 에러 없음 확인.
+- 8.3(blocked): 실제 Stripe 결제~웹훅 구간 e2e만 실키 대기로 미실행. 5.1과 동일 사유.
+
+===============================================================================
+5. 현재 상태 요약 (2026-07-22 기준)
+===============================================================================
+- tasks/tasks.json의 activeTaskId: "5.1"
+- 완료: Task 1, 2, 3, 4, 6, 7, 8.1, 8.2
+- 차단(사용자 액션 필요): Task 5.1(Stripe 키 발급/등록), Task 8.3(그에 따른 e2e 결제 테스트)
+- 결제를 제외한 전체 MVP 플로우(상품조회 → 장바구니 → 주문생성 → 마이페이지,
+  관리자 상품/주문 관리)는 정상 동작 확인됨.
+
+===============================================================================
+6. 재개 시 필요한 것
+===============================================================================
+Stripe 테스트 모드에서:
+  1) 개발자 > API 키 에서 Secret key 발급
+  2) 개발자 > Webhooks에 엔드포인트 추가
+     - URL: <NEXT_PUBLIC_CONVEX_SITE_URL>/stripe-webhook
+       (.env.local 기준 현재 값: https://flexible-dinosaur-138.convex.site/stripe-webhook)
+     - 구독 이벤트: checkout.session.completed
+     - 생성 후 나오는 서명 비밀키(whsec_...) 확인
+그 다음 아래 명령으로 Convex 배포 환경변수 등록:
+  npx convex env set STRIPE_SECRET_KEY "sk_test_..."
+  npx convex env set STRIPE_WEBHOOK_SECRET "whsec_..."
+  npx convex env set SITE_URL "http://localhost:3000"
+등록 후 task 5.1 → 8.3 순으로 이어서 진행.

@@ -1,0 +1,259 @@
+{
+  "project": "fullstackshop",
+  "source": "initial.md",
+  "lastUpdated": "2026-07-27",
+  "activeTaskId": "8.3",
+  "notes": [
+    "Convex는 모든 문서에 시스템 필드 _id, _creationTime을 자동 생성한다. 스키마에 별도의 id 필드를 정의하지 말 것.",
+    "테이블 간 외래키는 v.id(\"tableName\") validator로 참조한다 (예: cartItems.productId: v.id(\"products\")).",
+    "장바구니 아이템/주문 아이템처럼 무한정 늘어날 수 있는 목록은 부모 문서 안의 배열로 저장하지 않고 별도 테이블 + 외래키로 분리한다 (Convex 1MB 문서 크기 제한 및 쓰기 경합 방지).",
+    "인덱스는 쿼리 패턴에 맞춰 정의하고, 이름은 포함된 필드를 그대로 따른다 (예: by_userId).",
+    "이 tasks.json은 진행 상황 추적용이며, 작업 시작/완료 시 해당 task/subtask의 status와 activeTaskId를 갱신한다.",
+    "로컬 dev 배포에서 개발자 본인 Clerk 계정(gmw0924@gmail.com)의 users.role을 admin으로 승격해 두었다. 관리자 기능(task 7) 테스트 시 별도 승격 없이 이 계정으로 로그인해서 확인 가능.",
+    "2026-07-27 사용자가 Stripe 테스트 키를 발급해 STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET / SITE_URL을 npx convex env set으로 dev 배포(flexible-dinosaur-138)에 등록 완료 — task 5 전체 done. 이제 task 8.3(전체 플로우 수동 테스트, 실결제 e2e 포함)만 남음.",
+    "2026-07-27 원래 계획에 없던 추가 요청으로 Stripe/토스페이먼츠 중 결제 수단을 선택하는 기능을 구현함(convex/toss.ts, app/checkout/page.tsx, app/orders/[id]/page.tsx, orders 스키마에 paymentProvider/tossPaymentKey 필드 추가). 코드는 완료됐지만 사용자가 아직 토스페이먼츠 개발자센터에서 테스트 키를 발급받아 NEXT_PUBLIC_TOSS_CLIENT_KEY(.env.local)와 TOSS_SECRET_KEY(npx convex env set)를 등록하지 않아 실제 토스 결제 동작은 미검증 — task 8.3 e2e 테스트 때 Stripe/토스 두 경로 모두 확인 필요."
+  ],
+  "statusValues": ["pending", "in_progress", "done", "blocked"],
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Convex 데이터 스키마 설계",
+      "status": "done",
+      "description": "convex/schema.ts에 쇼핑몰 MVP에 필요한 테이블(products, users 확장, carts/cartItems, orders/orderItems)과 인덱스를 정의한다.",
+      "dependencies": [],
+      "subtasks": [
+        {
+          "id": "1.1",
+          "title": "products 테이블 정의",
+          "status": "done",
+          "description": "name, description, price, images, stock, isActive 필드와 by_isActive 인덱스 정의."
+        },
+        {
+          "id": "1.2",
+          "title": "users 테이블에 role 필드 추가",
+          "status": "done",
+          "description": "기존 users 테이블(tokenIdentifier/externalId 이중키 구조 유지)에 role(\"customer\" | \"admin\") 필드 추가. 기존 dev 데이터 1건은 widen-migrate-narrow 패턴(convex/migrations.ts 임시 backfillUserRole)으로 백필 후 제거."
+        },
+        {
+          "id": "1.3",
+          "title": "carts / cartItems 테이블 정의",
+          "status": "done",
+          "description": "carts: userId(1인당 1개). cartItems: cartId, productId, quantity를 별도 테이블로 분리하고 by_cartId 인덱스 정의."
+        },
+        {
+          "id": "1.4",
+          "title": "orders / orderItems 테이블 정의",
+          "status": "done",
+          "description": "orders: userId, status, totalAmount, shippingAddress, stripeSessionId/paymentIntentId. orderItems: orderId, productId, quantity, priceAtPurchase를 별도 테이블로 분리. by_userId, by_status 인덱스 정의."
+        },
+        {
+          "id": "1.5",
+          "title": "스키마 배포 및 검증",
+          "status": "done",
+          "description": "convex dev --once로 스키마 반영 확인 완료 (users.role 백필 후 required로 재배포, 정상 통과)."
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "title": "상품 기능 - 백엔드",
+      "status": "done",
+      "description": "convex/products.ts에 상품 조회/관리 함수를 구현한다.",
+      "dependencies": ["1"],
+      "subtasks": [
+        {
+          "id": "2.1",
+          "title": "상품 목록 쿼리",
+          "status": "done",
+          "description": "isActive=true 상품을 paginate()로 조회하는 public query (products.list)."
+        },
+        {
+          "id": "2.2",
+          "title": "상품 상세 쿼리",
+          "status": "done",
+          "description": "productId(Id<'products'>)로 단건 조회하는 public query (products.get)."
+        },
+        {
+          "id": "2.3",
+          "title": "관리자용 상품 생성/수정/삭제 mutation",
+          "status": "done",
+          "description": "users.ts의 requireAdmin(getOrCreateUser + role 체크) 헬퍼로 admin만 products.create/update/remove 호출 가능하도록 구현."
+        }
+      ]
+    },
+    {
+      "id": "3",
+      "title": "상품 기능 - 프론트엔드",
+      "status": "done",
+      "description": "상품 목록/상세 페이지 UI를 구현한다.",
+      "dependencies": ["2"],
+      "subtasks": [
+        {
+          "id": "3.1",
+          "title": "상품 목록 페이지 (/products)",
+          "status": "done",
+          "description": "usePaginatedQuery로 상품 목록을 불러와 카드 그리드로 표시, 로딩/빈 상태/더보기 처리."
+        },
+        {
+          "id": "3.2",
+          "title": "상품 상세 페이지 (/products/[id])",
+          "status": "done",
+          "description": "이미지, 가격, 재고, 설명 표시. '장바구니 담기' 버튼은 UI만 배치(비활성/타이틀 안내), 실제 연동은 task 4.3에서."
+        },
+        {
+          "id": "3.3",
+          "title": "상품 카드 컴포넌트",
+          "status": "done",
+          "description": "components/ProductCard.tsx로 분리, 목록 페이지에서 재사용."
+        }
+      ]
+    },
+    {
+      "id": "4",
+      "title": "장바구니 기능",
+      "status": "done",
+      "description": "로그인한 사용자의 장바구니 조회/추가/수량변경/삭제 기능을 구현한다.",
+      "dependencies": ["2"],
+      "subtasks": [
+        {
+          "id": "4.1",
+          "title": "장바구니 백엔드 함수 (convex/cart.ts)",
+          "status": "done",
+          "description": "getMyCart query, addItem/updateQuantity/removeItem mutation. requireOwnCartItem으로 본인 카트만 접근 가능하도록 검증. convex run --identity로 누적/수량변경/삭제/타인 접근 차단(403) 모두 확인."
+        },
+        {
+          "id": "4.2",
+          "title": "장바구니 페이지 (/cart)",
+          "status": "done",
+          "description": "담긴 상품 목록, 수량 조절, 삭제, 합계 금액, '주문하기' 버튼(현재 비활성, task 5에서 연동)."
+        },
+        {
+          "id": "4.3",
+          "title": "상품 상세 → 장바구니 연동",
+          "status": "done",
+          "description": "상품 상세 페이지에 수량 입력 + '장바구니 담기' 버튼을 cart.addItem에 연결. 비로그인 시 로그인 버튼 노출."
+        }
+      ]
+    },
+    {
+      "id": "5",
+      "title": "주문 & Stripe 결제",
+      "status": "done",
+      "description": "장바구니 기반 주문 생성과 Stripe 결제 연동을 구현한다. 2026-07-27 Stripe 테스트 키 등록 완료로 모든 서브태스크 완료.",
+      "dependencies": ["4"],
+      "subtasks": [
+        {
+          "id": "5.1",
+          "title": "Stripe 계정/환경변수 설정",
+          "status": "done",
+          "description": "STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, SITE_URL은 Next.js가 아니라 Convex 배포 환경변수로 설정해야 함(.env.local에 npx convex env set 안내 주석 추가 완료). 2026-07-27 사용자가 Stripe 테스트 모드 API 키 발급 + Webhooks에 /stripe-webhook(checkout.session.completed) 엔드포인트 등록 후 세 값 모두 npx convex env set으로 dev 배포(flexible-dinosaur-138)에 등록 완료."
+        },
+        {
+          "id": "5.2",
+          "title": "주문 생성 mutation",
+          "status": "done",
+          "description": "orders:createFromCart — 장바구니를 orders(status: pending) + orderItems로 스냅샷하고 장바구니를 비움. convex run --identity로 총액 계산·카트 비우기 확인."
+        },
+        {
+          "id": "5.3",
+          "title": "Stripe Checkout Session 생성 action",
+          "status": "done",
+          "description": "convex/stripe.ts createCheckoutSession action. Stripe.createFetchHttpClient()로 Convex 기본(non-Node) 런타임에서 동작하도록 구현(별도 \"use node\" 불필요). KRW는 zero-decimal 통화라 unit_amount를 원 단위 그대로 사용. STRIPE_SECRET_KEY 미설정 시 명확한 에러로 실패하는 것까지 확인."
+        },
+        {
+          "id": "5.4",
+          "title": "Stripe Webhook 처리",
+          "status": "done",
+          "description": "convex/stripe.ts webhook httpAction + convex/http.ts에 /stripe-webhook 등록. Stripe.createSubtleCryptoProvider()로 Web Crypto 기반 서명검증(Node 불필요). checkout.session.completed 시 orders.markOrderPaidBySessionId 호출. 배포된 엔드포인트에 curl로 시그니처/시크릿 누락 시 400 응답 확인."
+        },
+        {
+          "id": "5.5",
+          "title": "체크아웃 페이지 (/checkout)",
+          "status": "done",
+          "description": "app/checkout/page.tsx — 배송지 입력 폼 → orders.createFromCart → stripe.createCheckoutSession → Stripe Checkout으로 리다이렉트. 비로그인 시 로그인 유도."
+        },
+        {
+          "id": "5.6",
+          "title": "주문 완료/실패 페이지",
+          "status": "done",
+          "description": "app/orders/[id]/page.tsx — success/canceled 쿼리 파라미터에 따라 안내 문구, 주문 상태/품목/배송지 표시. useSearchParams 사용으로 Suspense 경계 적용."
+        }
+      ]
+    },
+    {
+      "id": "6",
+      "title": "마이페이지 (주문 내역)",
+      "status": "done",
+      "description": "로그인한 사용자가 본인 주문 목록/상태를 확인할 수 있게 한다. (task 5가 Stripe 실키 대기로 blocked인 동안 먼저 진행)",
+      "dependencies": ["5"],
+      "subtasks": [
+        {
+          "id": "6.1",
+          "title": "내 주문 목록 쿼리",
+          "status": "done",
+          "description": "orders.listMyOrders — by_userId 인덱스 + desc 정렬, paginate. convex run --identity로 결과 확인."
+        },
+        {
+          "id": "6.2",
+          "title": "마이페이지 UI (/my/orders)",
+          "status": "done",
+          "description": "app/my/orders/page.tsx — 주문 날짜/상태/총액 목록, 클릭 시 /orders/[id]로 이동. 주문 상태 라벨은 lib/orderStatus.ts로 공용화(주문 상세 페이지와 공유)."
+        }
+      ]
+    },
+    {
+      "id": "7",
+      "title": "관리자 기능",
+      "status": "done",
+      "description": "관리자가 상품과 주문을 관리할 수 있는 화면을 구현한다. Stripe 실결제(task 5.1)와 무관하게 진행 가능해서 먼저 완료.",
+      "dependencies": ["2", "5"],
+      "subtasks": [
+        {
+          "id": "7.1",
+          "title": "관리자 권한 체크 및 라우트 보호",
+          "status": "done",
+          "description": "users.requireAdminQuery(쿼리용)/requireAdmin(mutation용) + users.getMe 쿼리 추가. proxy.ts에 /admin(.*) 보호 경로 추가(미인증 시 Clerk 로그인으로 307 리다이렉트, curl/Playwright로 확인). 실제 role 체크는 components/AdminGate.tsx(클라이언트 UX) + 서버의 requireAdmin*(실제 보안 경계) 이중 구조."
+        },
+        {
+          "id": "7.2",
+          "title": "관리자 상품 관리 페이지 (/admin/products)",
+          "status": "done",
+          "description": "products.listAllForAdmin(비활성 포함 전체 조회) + 기존 create/update/remove. app/admin/products/page.tsx에 등록 폼 + 행별 가격/재고/판매여부 인라인 수정·삭제. convex run --identity로 비활성 상품 노출, 가격 수정, 비관리자 접근 차단(에러) 모두 확인."
+        },
+        {
+          "id": "7.3",
+          "title": "관리자 주문 관리 페이지 (/admin/orders)",
+          "status": "done",
+          "description": "orders.listAllForAdmin + orders.updateStatus(admin 전용). app/admin/orders/page.tsx에 주문 목록 + 상태 select. convex run --identity로 상태 변경(pending→preparing) 확인."
+        }
+      ]
+    },
+    {
+      "id": "8",
+      "title": "마무리 및 점검",
+      "status": "in_progress",
+      "description": "전체 플로우를 점검하고 기본적인 UX를 다듬는다. 8.1/8.2는 완료, 8.3(실결제 e2e)은 Stripe 테스트 키 등록 완료로 진행 중.",
+      "dependencies": ["6", "7"],
+      "subtasks": [
+        {
+          "id": "8.1",
+          "title": "로딩/에러 상태 UI 정리",
+          "status": "done",
+          "description": "모든 페이지가 '불러오는 중...' 로딩 문구를 공통으로 사용하도록 통일. fire-and-forget이던 mutation 호출(cart 수량변경/삭제, 상품상세 담기, admin 상품 저장/삭제, admin 주문 상태변경)에 try/catch + 인라인 에러 메시지 추가. 페이지 이동을 위한 공용 내비게이션이 아예 없던 문제를 발견해 components/SiteHeader.tsx(상품/장바구니/주문내역/관리자 링크 + 로그인 버튼)를 만들어 app/layout.tsx에 반영. app/page.tsx의 템플릿 numbers 카운터 데모(CLAUDE.md에 교체 대상으로 명시됨)를 상품 목록으로 연결되는 랜딩으로 교체."
+        },
+        {
+          "id": "8.2",
+          "title": "반응형 스타일 점검",
+          "status": "done",
+          "description": "장바구니/체크아웃/주문상세/관리자 목록의 행 레이아웃에 truncate·flex-wrap·flex-col sm:flex-row 등을 적용해 좁은 화면에서 겹침/잘림 방지. Playwright로 375px(모바일)/1280px(데스크톱) 두 뷰포트에서 홈·상품목록·상품상세·장바구니·체크아웃·주문내역 6개 화면 스크린샷 + document.scrollWidth 비교로 가로 스크롤(overflow) 없음, 콘솔 에러 없음 확인."
+        },
+        {
+          "id": "8.3",
+          "title": "전체 플로우 수동 테스트",
+          "status": "in_progress",
+          "description": "상품조회 → 장바구니 → 주문 → Stripe 결제(테스트 모드) → 마이페이지/관리자 확인까지 end-to-end 점검. 2026-07-27 Stripe 테스트 키 등록 완료로 blocked 해제, 진행 시작."
+        }
+      ]
+    }
+  ]
+}

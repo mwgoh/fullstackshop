@@ -1,6 +1,28 @@
 import { v, Validator } from "convex/values";
 import type { UserJSON } from "@clerk/backend";
-import { internalMutation, mutation, MutationCtx } from "./_generated/server";
+import {
+  internalMutation,
+  mutation,
+  query,
+  MutationCtx,
+  QueryCtx,
+} from "./_generated/server";
+
+// Read-only lookup of the current user's row. Unlike getOrCreateUser, this
+// never writes, so it's safe to call from queries; returns null if signed
+// out or if no `users` row exists yet for this identity.
+export async function getCurrentUser(ctx: QueryCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    return null;
+  }
+  return await ctx.db
+    .query("users")
+    .withIndex("by_token", (q) =>
+      q.eq("tokenIdentifier", identity.tokenIdentifier),
+    )
+    .unique();
+}
 
 // Upserts a `users` row for the currently authenticated Clerk identity and
 // returns it. Throws if there is no authenticated identity. Shared by any
@@ -51,9 +73,38 @@ export async function getOrCreateUser(ctx: MutationCtx) {
     email: identity.email,
     tokenIdentifier: identity.tokenIdentifier,
     externalId: identity.subject,
+    role: "customer",
   });
   return (await ctx.db.get("users", userId))!;
 }
+
+// Throws unless the currently authenticated user has the "admin" role.
+// Used to gate admin-only mutations (product management, order status, etc).
+export async function requireAdmin(ctx: MutationCtx) {
+  const user = await getOrCreateUser(ctx);
+  if (user.role !== "admin") {
+    throw new Error("Not authorized: admin role required");
+  }
+  return user;
+}
+
+// Read-only counterpart of requireAdmin, for admin-only queries.
+export async function requireAdminQuery(ctx: QueryCtx) {
+  const user = await getCurrentUser(ctx);
+  if (user === null || user.role !== "admin") {
+    throw new Error("Not authorized: admin role required");
+  }
+  return user;
+}
+
+// The current user's own row, for client-side profile/role display (e.g.
+// gating admin screens). Returns null if signed out.
+export const getMe = query({
+  args: {},
+  handler: async (ctx) => {
+    return await getCurrentUser(ctx);
+  },
+});
 
 // Called by the client (via useStoreUserEffect) right after Clerk sign-in
 // completes, to sync the authenticated identity into our own `users` table.
@@ -94,6 +145,7 @@ export const upsertFromClerk = internalMutation({
         // No Convex session has authenticated as this user yet. A real value
         // is adopted the first time they sign in, in getOrCreateUser above.
         tokenIdentifier: `clerk-webhook:${data.id}`,
+        role: "customer",
       });
     } else {
       await ctx.db.patch("users", existing._id, { name, email });

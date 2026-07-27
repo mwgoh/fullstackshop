@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 import { verifyWebhook } from "@clerk/backend/webhooks";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { webhook as stripeWebhook } from "./stripe";
 
 const http = httpRouter();
 
@@ -45,6 +46,16 @@ http.route({
 
     return new Response(null, { status: 200 });
   }),
+});
+
+// Register this URL as a webhook endpoint in the Stripe dashboard
+// (Developers -> Webhooks -> Add endpoint), subscribed to the
+// checkout.session.completed event. Requires STRIPE_SECRET_KEY and
+// STRIPE_WEBHOOK_SECRET to be set on this Convex deployment.
+http.route({
+  path: "/stripe-webhook",
+  method: "POST",
+  handler: stripeWebhook,
 });
 
 export default http;
