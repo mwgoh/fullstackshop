@@ -60,6 +60,7 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
     try {
       const { url } = await createCheckoutSession({
         orderId: orderId as Id<"orders">,
+        origin: window.location.origin,
       });
       window.location.href = url;
     } catch (err) {

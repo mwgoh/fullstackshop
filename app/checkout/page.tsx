@@ -74,7 +74,10 @@ function CheckoutForm() {
         },
       });
 
-      const { url } = await createCheckoutSession({ orderId });
+      const { url } = await createCheckoutSession({
+        orderId,
+        origin: window.location.origin,
+      });
       window.location.assign(url);
     } catch (err) {
       setError(

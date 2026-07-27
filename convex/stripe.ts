@@ -16,7 +16,7 @@ function getStripeClient() {
 // Creates a Stripe Checkout Session for an already-created pending order and
 // returns the URL to redirect the browser to.
 export const createCheckoutSession = action({
-  args: { orderId: v.id("orders") },
+  args: { orderId: v.id("orders"), origin: v.string() },
   handler: async (ctx, args): Promise<{ url: string }> => {
     const order = await ctx.runQuery(api.orders.getMyOrder, {
       orderId: args.orderId,
@@ -26,7 +26,10 @@ export const createCheckoutSession = action({
     }
 
     const stripe = getStripeClient();
-    const siteUrl = process.env.SITE_URL ?? "http://localhost:3000";
+    // 로컬 개발(localhost)과 Vercel 배포가 같은 Convex 배포를 공유할 수 있어,
+    // 고정된 환경변수 대신 결제를 시작한 브라우저의 실제 origin을 그대로
+    // 사용해 success/cancel URL을 만든다.
+    const siteUrl = args.origin.replace(/\/+$/, "");
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
