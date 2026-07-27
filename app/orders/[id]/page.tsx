@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, use, useEffect, useRef, useState } from "react";
+import { Suspense, use, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -30,19 +30,11 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
   });
   const createCheckoutSession = useAction(api.stripe.createCheckoutSession);
   const syncOrderStatus = useAction(api.stripe.syncOrderStatus);
-  const confirmTossPayment = useAction(api.toss.confirmPayment);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
-  const [tossConfirming, setTossConfirming] = useState(false);
-  const [tossConfirmError, setTossConfirmError] = useState<string | null>(
-    null,
-  );
-  const tossConfirmAttempted = useRef(false);
 
   const orderStatus = order?.status;
   const stripeSessionId = order?.stripeSessionId;
-  const tossPaymentKey = searchParams.get("paymentKey");
-  const tossAmount = searchParams.get("amount");
   useEffect(() => {
     // 웹훅이 아직 반영되지 않았을 수 있으니, 진행 중인 결제가 있으면 Stripe에서
     // 직접 상태를 확인해 보정한다.
@@ -50,34 +42,6 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
       syncOrderStatus({ orderId: orderId as Id<"orders"> }).catch(() => {});
     }
   }, [orderStatus, stripeSessionId, orderId, syncOrderStatus]);
-
-  useEffect(() => {
-    // 토스페이먼츠 결제창에서 돌아온 직후에는 이 페이지에서 직접 결제 승인
-    // API를 호출해야 결제가 최종 완료된다(Stripe와 달리 웹훅이 아니라 이
-    // 리다이렉트 처리가 승인의 주체).
-    if (
-      orderStatus === "pending" &&
-      tossPaymentKey &&
-      tossAmount &&
-      !tossConfirmAttempted.current
-    ) {
-      tossConfirmAttempted.current = true;
-      setTossConfirming(true);
-      confirmTossPayment({
-        orderId: orderId as Id<"orders">,
-        paymentKey: tossPaymentKey,
-        amount: Number(tossAmount),
-      })
-        .catch((err) => {
-          setTossConfirmError(
-            err instanceof Error
-              ? err.message
-              : "결제 승인 중 오류가 발생했습니다.",
-          );
-        })
-        .finally(() => setTossConfirming(false));
-    }
-  }, [orderStatus, tossPaymentKey, tossAmount, orderId, confirmTossPayment]);
 
   if (order === undefined) {
     return <main className="p-8 text-slate-500">불러오는 중...</main>;
@@ -89,8 +53,6 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
 
   const success = searchParams.get("success") === "true";
   const canceled = searchParams.get("canceled") === "true";
-  const tossFail = searchParams.get("tossFail") === "true";
-  const tossFailMessage = searchParams.get("message");
 
   async function handlePay() {
     setPaying(true);
@@ -116,27 +78,12 @@ function OrderDetailContent({ orderId }: { orderId: string }) {
       {canceled && (
         <p className="text-amber-600 font-medium">결제가 취소되었습니다.</p>
       )}
-      {tossFail && (
-        <p className="text-amber-600 font-medium">
-          토스페이먼츠 결제가 취소/실패했습니다.
-          {tossFailMessage ? ` (${tossFailMessage})` : ""}
-        </p>
-      )}
-      {tossConfirming && (
-        <p className="text-slate-500 text-sm">
-          토스페이먼츠 결제를 승인하는 중입니다...
-        </p>
-      )}
-      {tossConfirmError && (
-        <p className="text-sm text-red-500">{tossConfirmError}</p>
-      )}
-
       <h1 className="text-2xl font-bold">주문 상세</h1>
       <p className="text-sm text-slate-500">
         상태: {orderStatusLabel[order.status]}
       </p>
 
-      {order.status === "pending" && !tossPaymentKey && (
+      {order.status === "pending" && (
         <div className="flex flex-col gap-2 items-start">
           <button
             onClick={handlePay}

@@ -11,7 +11,8 @@
     "이 tasks.json은 진행 상황 추적용이며, 작업 시작/완료 시 해당 task/subtask의 status와 activeTaskId를 갱신한다.",
     "로컬 dev 배포에서 개발자 본인 Clerk 계정(gmw0924@gmail.com)의 users.role을 admin으로 승격해 두었다. 관리자 기능(task 7) 테스트 시 별도 승격 없이 이 계정으로 로그인해서 확인 가능.",
     "2026-07-27 사용자가 Stripe 테스트 키를 발급해 STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET / SITE_URL을 npx convex env set으로 dev 배포(flexible-dinosaur-138)에 등록 완료 — task 5 전체 done. 이제 task 8.3(전체 플로우 수동 테스트, 실결제 e2e 포함)만 남음.",
-    "2026-07-27 원래 계획에 없던 추가 요청으로 Stripe/토스페이먼츠 중 결제 수단을 선택하는 기능을 구현함(convex/toss.ts, app/checkout/page.tsx, app/orders/[id]/page.tsx, orders 스키마에 paymentProvider/tossPaymentKey 필드 추가). 코드는 완료됐지만 사용자가 아직 토스페이먼츠 개발자센터에서 테스트 키를 발급받아 NEXT_PUBLIC_TOSS_CLIENT_KEY(.env.local)와 TOSS_SECRET_KEY(npx convex env set)를 등록하지 않아 실제 토스 결제 동작은 미검증 — task 8.3 e2e 테스트 때 Stripe/토스 두 경로 모두 확인 필요."
+    "2026-07-27 원래 계획에 없던 추가 요청으로 Stripe/토스페이먼츠 중 결제 수단을 선택하는 기능을 구현함(convex/toss.ts, app/checkout/page.tsx, app/orders/[id]/page.tsx, orders 스키마에 paymentProvider/tossPaymentKey 필드 추가). 코드는 완료됐지만 사용자가 아직 토스페이먼츠 개발자센터에서 테스트 키를 발급받아 NEXT_PUBLIC_TOSS_CLIENT_KEY(.env.local)와 TOSS_SECRET_KEY(npx convex env set)를 등록하지 않아 실제 토스 결제 동작은 미검증 — task 8.3 e2e 테스트 때 Stripe/토스 두 경로 모두 확인 필요.",
+    "2026-07-27 토스페이먼츠 결제 기능을 다시 제외함(사용자 요청). convex/toss.ts 삭제, orders.ts의 markOrderPaidByToss 제거, schema.ts의 paymentProvider를 stripe 단일 literal로 단순화하고 tossPaymentKey 필드 삭제, app/checkout/page.tsx·app/orders/[id]/page.tsx에서 토스 관련 UI/로직 제거, @tosspayments/tosspayments-sdk 의존성 제거, .env.local의 NEXT_PUBLIC_TOSS_CLIENT_KEY 삭제. 이제 결제 수단은 Stripe만 남음 — task 8.3 e2e 테스트는 Stripe 경로만 확인하면 됨."
   ],
   "statusValues": ["pending", "in_progress", "done", "blocked"],
   "tasks": [

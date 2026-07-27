@@ -14,7 +14,6 @@ import type * as myFunctions from "../myFunctions.js";
 import type * as orders from "../orders.js";
 import type * as products from "../products.js";
 import type * as stripe from "../stripe.js";
-import type * as toss from "../toss.js";
 import type * as users from "../users.js";
 
 import type {
@@ -30,7 +29,6 @@ declare const fullApi: ApiFromModules<{
   orders: typeof orders;
   products: typeof products;
   stripe: typeof stripe;
-  toss: typeof toss;
   users: typeof users;
 }>;
 

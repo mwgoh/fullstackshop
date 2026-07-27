@@ -3,11 +3,8 @@
 import { FormEvent, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { SignInButton } from "@clerk/nextjs";
-import { loadTossPayments, ANONYMOUS } from "@tosspayments/tosspayments-sdk";
 import { api } from "@/convex/_generated/api";
 import { useStoreUserEffect } from "@/hooks/useStoreUserEffect";
-
-type PaymentProvider = "stripe" | "toss";
 
 export default function CheckoutPage() {
   const { isLoading, isAuthenticated } = useStoreUserEffect();
@@ -44,7 +41,6 @@ function CheckoutForm() {
     address1: "",
     address2: "",
   });
-  const [provider, setProvider] = useState<PaymentProvider>("stripe");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,31 +74,8 @@ function CheckoutForm() {
         },
       });
 
-      if (provider === "stripe") {
-        const { url } = await createCheckoutSession({ orderId });
-        window.location.assign(url);
-        return;
-      }
-
-      const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
-      if (!clientKey) {
-        throw new Error("토스페이먼츠 클라이언트 키가 설정되지 않았습니다.");
-      }
-      const orderName =
-        items!.length > 1
-          ? `${items![0].product?.name ?? "상품"} 외 ${items!.length - 1}건`
-          : (items![0].product?.name ?? "상품");
-
-      const tossPayments = await loadTossPayments(clientKey);
-      const payment = tossPayments.payment({ customerKey: ANONYMOUS });
-      await payment.requestPayment({
-        method: "CARD",
-        amount: { currency: "KRW", value: total },
-        orderId,
-        orderName,
-        successUrl: `${window.location.origin}/orders/${orderId}?tossSuccess=true`,
-        failUrl: `${window.location.origin}/orders/${orderId}?tossFail=true`,
-      });
+      const { url } = await createCheckoutSession({ orderId });
+      window.location.assign(url);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "주문 처리 중 오류가 발생했습니다.",
@@ -170,42 +143,6 @@ function CheckoutForm() {
           onChange={(e) => setForm({ ...form, address2: e.target.value })}
           className="border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 text-sm"
         />
-
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium">결제 수단</span>
-          <div className="flex gap-3">
-            <label
-              className={`flex-1 flex items-center gap-2 border rounded-md px-3 py-2 text-sm cursor-pointer ${
-                provider === "stripe"
-                  ? "border-indigo-500 ring-1 ring-indigo-500"
-                  : "border-slate-300 dark:border-slate-700"
-              }`}
-            >
-              <input
-                type="radio"
-                name="provider"
-                checked={provider === "stripe"}
-                onChange={() => setProvider("stripe")}
-              />
-              Stripe (해외 카드)
-            </label>
-            <label
-              className={`flex-1 flex items-center gap-2 border rounded-md px-3 py-2 text-sm cursor-pointer ${
-                provider === "toss"
-                  ? "border-indigo-500 ring-1 ring-indigo-500"
-                  : "border-slate-300 dark:border-slate-700"
-              }`}
-            >
-              <input
-                type="radio"
-                name="provider"
-                checked={provider === "toss"}
-                onChange={() => setProvider("toss")}
-              />
-              토스페이먼츠
-            </label>
-          </div>
-        </div>
 
         {error && <p className="text-sm text-red-500">{error}</p>}
 

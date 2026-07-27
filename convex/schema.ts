@@ -79,10 +79,8 @@ export default defineSchema({
     }),
     stripeSessionId: v.optional(v.string()),
     stripePaymentIntentId: v.optional(v.string()),
-    // 결제 수단 선택(Stripe/토스페이먼츠)에 따라 채워지는 필드. 결제가
-    // 완료되기 전까지는 비어 있다.
-    paymentProvider: v.optional(v.union(v.literal("stripe"), v.literal("toss"))),
-    tossPaymentKey: v.optional(v.string()),
+    // 결제가 완료되기 전까지는 비어 있다.
+    paymentProvider: v.optional(v.literal("stripe")),
   })
     .index("by_userId", ["userId"])
     .index("by_status", ["status"])

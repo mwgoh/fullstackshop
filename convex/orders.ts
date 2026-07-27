@@ -169,24 +169,3 @@ export const markOrderPaidBySessionId = internalMutation({
     });
   },
 });
-
-// Called from the order detail page right after a successful Toss Payments
-// confirm() call (see convex/toss.ts). Idempotent: a second call after the
-// order is already paid is a no-op.
-export const markOrderPaidByToss = internalMutation({
-  args: { orderId: v.id("orders"), tossPaymentKey: v.string() },
-  handler: async (ctx, args) => {
-    const order = await ctx.db.get("orders", args.orderId);
-    if (order === null) {
-      throw new Error("Order not found");
-    }
-    if (order.status !== "pending") {
-      return;
-    }
-    await ctx.db.patch("orders", args.orderId, {
-      status: "paid",
-      paymentProvider: "toss",
-      tossPaymentKey: args.tossPaymentKey,
-    });
-  },
-});
