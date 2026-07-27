@@ -22,9 +22,7 @@ export default function AdminGate({ children }: { children: ReactNode }) {
       <main className="p-8 flex flex-col gap-4 items-start">
         <p>관리자 페이지는 로그인이 필요합니다.</p>
         <SignInButton mode="modal">
-          <button className="bg-foreground text-background px-4 py-2 rounded-md">
-            로그인
-          </button>
+          <button className="btn-primary">로그인</button>
         </SignInButton>
       </main>
     );

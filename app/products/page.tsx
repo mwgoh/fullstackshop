@@ -47,8 +47,8 @@ function ProductsContent() {
       : "전체 상품";
 
   return (
-    <main className="p-8 flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">{heading}</h1>
+    <main className="section py-12 flex flex-col gap-8">
+      <h1 className="text-3xl font-bold tracking-tight">{heading}</h1>
 
       {status === "LoadingFirstPage" ? (
         <p className="text-slate-500">불러오는 중...</p>
@@ -57,7 +57,7 @@ function ProductsContent() {
           {q ? "검색 결과가 없습니다." : "등록된 상품이 없습니다."}
         </p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
           {filtered.map((product) => (
             <ProductCard key={product._id} product={product} />
           ))}
@@ -65,10 +65,7 @@ function ProductsContent() {
       )}
 
       {!q && status === "CanLoadMore" && (
-        <button
-          className="mx-auto bg-foreground text-background text-sm px-4 py-2 rounded-md"
-          onClick={() => loadMore(12)}
-        >
+        <button className="btn-secondary mx-auto" onClick={() => loadMore(12)}>
           더 보기
         </button>
       )}

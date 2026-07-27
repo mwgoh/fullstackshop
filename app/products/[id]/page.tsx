@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery } from "convex/react";
 import { SignInButton } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
@@ -31,6 +32,7 @@ export default function ProductDetailPage({
   }
 
   const thumbnail = product.images[0];
+  const soldOut = product.stock === 0;
 
   async function handleAdd() {
     setError(null);
@@ -44,8 +46,8 @@ export default function ProductDetailPage({
   }
 
   return (
-    <main className="p-8 flex flex-col md:flex-row gap-8 max-w-4xl mx-auto">
-      <div className="w-full md:w-1/2 aspect-square bg-slate-100 dark:bg-slate-900 flex items-center justify-center rounded-md overflow-hidden">
+    <main className="section py-12 flex flex-col md:flex-row gap-12">
+      <div className="w-full md:w-1/2 aspect-square rounded-3xl bg-slate-100 dark:bg-slate-900 flex items-center justify-center overflow-hidden shadow-sm">
         {thumbnail ? (
           // eslint-disable-next-line @next/next/no-img-element -- product images come from arbitrary admin-provided URLs
           <img
@@ -58,51 +60,72 @@ export default function ProductDetailPage({
         )}
       </div>
 
-      <div className="w-full md:w-1/2 flex flex-col gap-4">
-        <h1 className="text-2xl font-bold">{product.name}</h1>
-        <p className="text-xl">{product.price.toLocaleString()}원</p>
-        <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-line">
+      <div className="w-full md:w-1/2 flex flex-col gap-5">
+        <h1 className="text-3xl font-bold tracking-tight">{product.name}</h1>
+        <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+          {product.price.toLocaleString()}원
+        </p>
+        <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-line leading-relaxed">
           {product.description}
         </p>
         <p className="text-sm">
-          {product.stock > 0 ? `재고 ${product.stock}개` : "품절"}
+          {soldOut ? (
+            <span className="badge bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400">
+              품절
+            </span>
+          ) : (
+            <span className="text-slate-500">재고 {product.stock}개</span>
+          )}
         </p>
 
-        <div className="flex items-center gap-3">
-          <input
-            type="number"
-            min={1}
-            value={quantity}
-            onChange={(e) => {
-              const next = Number(e.target.value);
-              if (Number.isFinite(next) && next >= 1) {
-                setQuantity(next);
-              }
-            }}
-            className="w-16 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 text-sm"
-          />
+        <div className="flex items-center gap-3 pt-2">
+          <div className="flex items-center rounded-full border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <button
+              type="button"
+              aria-label="수량 감소"
+              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              className="w-9 h-9 flex items-center justify-center text-lg hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+            >
+              −
+            </button>
+            <span className="w-10 text-center text-sm font-medium tabular-nums">
+              {quantity}
+            </span>
+            <button
+              type="button"
+              aria-label="수량 증가"
+              onClick={() => setQuantity((q) => q + 1)}
+              className="w-9 h-9 flex items-center justify-center text-lg hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+            >
+              +
+            </button>
+          </div>
 
           {isAuthenticated ? (
             <button
-              className="bg-foreground text-background px-4 py-2 rounded-md disabled:opacity-50"
-              disabled={product.stock === 0}
+              className="btn-primary disabled:hover:bg-indigo-600"
+              disabled={soldOut}
               onClick={() => void handleAdd()}
             >
               장바구니 담기
             </button>
           ) : (
             <SignInButton mode="modal">
-              <button className="bg-foreground text-background px-4 py-2 rounded-md">
-                로그인 후 담기
-              </button>
+              <button className="btn-primary">로그인 후 담기</button>
             </SignInButton>
           )}
         </div>
 
         {added && (
-          <p className="text-sm text-green-600">장바구니에 담았습니다.</p>
+          <p className="text-sm text-emerald-600 dark:text-emerald-400">
+            장바구니에 담았습니다.
+          </p>
         )}
         {error && <p className="text-sm text-red-500">{error}</p>}
+
+        <Link href="/products" className="btn-secondary self-start mt-2">
+          계속 쇼핑하기
+        </Link>
       </div>
     </main>
   );

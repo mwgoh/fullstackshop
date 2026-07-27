@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Doc, Id } from "@/convex/_generated/dataModel";
-import { orderStatusLabel } from "@/lib/orderStatus";
+import { orderStatusBadgeClass, orderStatusLabel } from "@/lib/orderStatus";
 
 const STATUS_OPTIONS: Doc<"orders">["status"][] = [
   "pending",
@@ -37,8 +37,8 @@ export default function AdminOrdersPage() {
   }
 
   return (
-    <main className="p-8 flex flex-col gap-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold">주문 관리</h1>
+    <main className="p-8 flex flex-col gap-6 max-w-3xl">
+      <h1 className="text-3xl font-bold tracking-tight">주문 관리</h1>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 
@@ -51,9 +51,9 @@ export default function AdminOrdersPage() {
           {results.map((order) => (
             <li
               key={order._id}
-              className="flex flex-col sm:flex-row sm:items-center gap-3 border border-slate-200 dark:border-slate-800 rounded-md p-3"
+              className="card flex flex-col sm:flex-row sm:items-center gap-3 p-4"
             >
-              <div className="flex flex-col gap-1 flex-1 min-w-0">
+              <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                 <span className="text-xs text-slate-500">
                   {new Date(order._creationTime).toLocaleString("ko-KR")}
                 </span>
@@ -61,6 +61,11 @@ export default function AdminOrdersPage() {
                   {order.shippingAddress.recipientName}
                 </span>
               </div>
+              <span
+                className={`badge w-fit ${orderStatusBadgeClass[order.status]}`}
+              >
+                {orderStatusLabel[order.status]}
+              </span>
               <span className="text-sm font-medium">
                 {order.totalAmount.toLocaleString()}원
               </span>
@@ -72,7 +77,7 @@ export default function AdminOrdersPage() {
                     e.target.value as Doc<"orders">["status"],
                   )
                 }
-                className="border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 text-sm"
+                className="input w-auto py-1.5"
               >
                 {STATUS_OPTIONS.map((s) => (
                   <option key={s} value={s}>
@@ -86,10 +91,7 @@ export default function AdminOrdersPage() {
       )}
 
       {status === "CanLoadMore" && (
-        <button
-          className="mx-auto text-sm underline hover:no-underline"
-          onClick={() => loadMore(20)}
-        >
+        <button className="btn-secondary btn-sm mx-auto" onClick={() => loadMore(20)}>
           더 보기
         </button>
       )}

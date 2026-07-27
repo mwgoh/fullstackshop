@@ -78,7 +78,7 @@ function HeaderShell({
   children?: React.ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-10 bg-background border-b border-slate-200 dark:border-slate-800">
+    <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-slate-200/70 dark:border-slate-800/70">
       <div className="flex items-center gap-4 p-4 flex-wrap max-w-6xl mx-auto">
         {logo}
         {children}
@@ -89,8 +89,13 @@ function HeaderShell({
 
 function Logo() {
   return (
-    <Link href="/" className="flex items-center gap-2 font-bold shrink-0">
-      <BoxIcon className="h-6 w-6 text-indigo-600" />
+    <Link
+      href="/"
+      className="flex items-center gap-2 font-bold text-lg tracking-tight shrink-0"
+    >
+      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-sm shadow-indigo-600/30">
+        <BoxIcon className="h-4 w-4" />
+      </span>
       FullStackShop
     </Link>
   );
@@ -138,10 +143,10 @@ function SiteHeaderContent() {
             <Link
               key={link.label}
               href={href}
-              className={`rounded-md px-2 py-1 transition-colors ${
+              className={`rounded-full px-3 py-1.5 font-medium transition-colors ${
                 active
-                  ? "bg-indigo-50 text-indigo-600 font-semibold dark:bg-indigo-950"
-                  : "hover:text-indigo-600"
+                  ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-foreground"
               }`}
             >
               {link.label}
@@ -151,7 +156,7 @@ function SiteHeaderContent() {
         {isAuthenticated && (
           <Link
             href="/my/orders"
-            className="rounded-md px-2 py-1 hover:text-indigo-600 transition-colors"
+            className="rounded-full px-3 py-1.5 font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-foreground transition-colors"
           >
             주문내역
           </Link>
@@ -159,7 +164,7 @@ function SiteHeaderContent() {
         {isAdmin && (
           <Link
             href="/admin"
-            className="rounded-md px-2 py-1 hover:text-indigo-600 transition-colors"
+            className="rounded-full px-3 py-1.5 font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-foreground transition-colors"
           >
             관리자
           </Link>
@@ -168,20 +173,24 @@ function SiteHeaderContent() {
 
       <div className="flex items-center gap-3 ml-auto">
         <form onSubmit={handleSearchSubmit} className="relative hidden sm:block">
-          <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="상품 검색..."
-            className="w-48 rounded-md border border-slate-200 dark:border-slate-800 bg-transparent pl-8 pr-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-48 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 pl-9 pr-4 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-colors"
           />
         </form>
 
-        <Link href="/cart" className="relative" aria-label="장바구니">
-          <CartIcon className="h-6 w-6" />
+        <Link
+          href="/cart"
+          className="relative rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+          aria-label="장바구니"
+        >
+          <CartIcon className="h-5 w-5" />
           {cartCount > 0 && (
-            <span className="absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white">
+            <span className="absolute top-0 right-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white">
               {cartCount}
             </span>
           )}
@@ -193,9 +202,7 @@ function SiteHeaderContent() {
               <UserButton />
             ) : (
               <SignInButton mode="modal">
-                <button className="bg-foreground text-background text-sm px-3 py-1.5 rounded-md">
-                  로그인
-                </button>
+                <button className="btn-primary btn-sm">로그인</button>
               </SignInButton>
             )}
           </>

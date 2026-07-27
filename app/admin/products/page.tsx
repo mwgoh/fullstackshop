@@ -63,27 +63,24 @@ export default function AdminProductsPage() {
   }
 
   return (
-    <main className="p-8 flex flex-col gap-8 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold">상품 관리</h1>
+    <main className="p-8 flex flex-col gap-8 max-w-3xl">
+      <h1 className="text-3xl font-bold tracking-tight">상품 관리</h1>
 
-      <form
-        onSubmit={handleCreate}
-        className="flex flex-col gap-3 border border-slate-200 dark:border-slate-800 rounded-md p-4"
-      >
-        <h2 className="font-medium">새 상품 등록</h2>
+      <form onSubmit={handleCreate} className="card flex flex-col gap-3 p-5">
+        <h2 className="font-semibold">새 상품 등록</h2>
         <input
           required
           placeholder="상품명"
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 text-sm"
+          className="input"
         />
         <textarea
           required
           placeholder="설명"
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
-          className="border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 text-sm"
+          className="input"
         />
         <div className="flex gap-3">
           <input
@@ -93,7 +90,7 @@ export default function AdminProductsPage() {
             placeholder="가격"
             value={form.price}
             onChange={(e) => setForm({ ...form, price: e.target.value })}
-            className="border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 text-sm w-1/2"
+            className="input w-1/2"
           />
           <input
             required
@@ -102,7 +99,7 @@ export default function AdminProductsPage() {
             placeholder="재고"
             value={form.stock}
             onChange={(e) => setForm({ ...form, stock: e.target.value })}
-            className="border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 text-sm w-1/2"
+            className="input w-1/2"
           />
         </div>
         <select
@@ -113,7 +110,7 @@ export default function AdminProductsPage() {
               category: e.target.value as ProductCategory,
             })
           }
-          className="border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 text-sm"
+          className="input"
         >
           {productCategories.map((category) => (
             <option key={category} value={category}>
@@ -125,20 +122,20 @@ export default function AdminProductsPage() {
           placeholder="이미지 URL (선택)"
           value={form.image}
           onChange={(e) => setForm({ ...form, image: e.target.value })}
-          className="border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 text-sm"
+          className="input"
         />
         {error && <p className="text-sm text-red-500">{error}</p>}
         <button
           type="submit"
           disabled={creating}
-          className="self-start bg-foreground text-background px-4 py-2 rounded-md disabled:opacity-50"
+          className="btn-primary self-start"
         >
           {creating ? "등록 중..." : "등록"}
         </button>
       </form>
 
       <div className="flex flex-col gap-3">
-        <h2 className="font-medium">전체 상품</h2>
+        <h2 className="font-semibold">전체 상품</h2>
         {status === "LoadingFirstPage" ? (
           <p className="text-slate-500 text-sm">불러오는 중...</p>
         ) : results.length === 0 ? (
@@ -156,10 +153,7 @@ export default function AdminProductsPage() {
           </ul>
         )}
         {status === "CanLoadMore" && (
-          <button
-            className="mx-auto text-sm underline hover:no-underline"
-            onClick={() => loadMore(20)}
-          >
+          <button className="btn-secondary btn-sm mx-auto" onClick={() => loadMore(20)}>
             더 보기
           </button>
         )}
@@ -208,7 +202,7 @@ function AdminProductRow({
   }
 
   return (
-    <li className="flex flex-col gap-2 border border-slate-200 dark:border-slate-800 rounded-md p-3">
+    <li className="card flex flex-col gap-2 p-4">
       <div className="flex items-center gap-3 flex-wrap">
         <span className="flex-1 min-w-32 text-sm font-medium truncate">
           {product.name}
@@ -218,19 +212,19 @@ function AdminProductRow({
           min={0}
           value={price}
           onChange={(e) => setPrice(Number(e.target.value))}
-          className="w-24 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 text-sm"
+          className="input w-24 py-1.5"
         />
         <input
           type="number"
           min={0}
           value={stock}
           onChange={(e) => setStock(Number(e.target.value))}
-          className="w-20 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 text-sm"
+          className="input w-20 py-1.5"
         />
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value as ProductCategory)}
-          className="border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 text-sm"
+          className="input w-auto py-1.5"
         >
           {productCategories.map((c) => (
             <option key={c} value={c}>
@@ -238,7 +232,7 @@ function AdminProductRow({
             </option>
           ))}
         </select>
-        <label className="flex items-center gap-1 text-xs whitespace-nowrap">
+        <label className="flex items-center gap-1.5 text-xs whitespace-nowrap">
           <input
             type="checkbox"
             checked={isActive}
@@ -246,14 +240,11 @@ function AdminProductRow({
           />
           판매중
         </label>
-        <button
-          className="text-xs underline hover:no-underline"
-          onClick={() => void handleSave()}
-        >
+        <button className="btn-ghost btn-sm" onClick={() => void handleSave()}>
           저장
         </button>
         <button
-          className="text-xs text-red-500 underline hover:no-underline"
+          className="btn-ghost btn-sm text-red-500 hover:text-red-600"
           onClick={() => void handleRemove()}
         >
           삭제

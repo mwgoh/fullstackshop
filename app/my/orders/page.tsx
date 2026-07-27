@@ -5,7 +5,7 @@ import { usePaginatedQuery } from "convex/react";
 import { SignInButton } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { useStoreUserEffect } from "@/hooks/useStoreUserEffect";
-import { orderStatusLabel } from "@/lib/orderStatus";
+import { orderStatusBadgeClass, orderStatusLabel } from "@/lib/orderStatus";
 
 export default function MyOrdersPage() {
   const { isLoading, isAuthenticated } = useStoreUserEffect();
@@ -19,9 +19,7 @@ export default function MyOrdersPage() {
       <main className="p-8 flex flex-col gap-4 items-start">
         <p>주문 내역을 보려면 로그인해 주세요.</p>
         <SignInButton mode="modal">
-          <button className="bg-foreground text-background px-4 py-2 rounded-md">
-            로그인
-          </button>
+          <button className="btn-primary">로그인</button>
         </SignInButton>
       </main>
     );
@@ -38,8 +36,8 @@ function MyOrdersList() {
   );
 
   return (
-    <main className="p-8 flex flex-col gap-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold">내 주문 내역</h1>
+    <main className="section py-12 flex flex-col gap-6 max-w-2xl">
+      <h1 className="text-3xl font-bold tracking-tight">내 주문 내역</h1>
 
       {status === "LoadingFirstPage" ? (
         <p className="text-slate-500">불러오는 중...</p>
@@ -51,15 +49,17 @@ function MyOrdersList() {
             <li key={order._id}>
               <Link
                 href={`/orders/${order._id}`}
-                className="flex items-center justify-between gap-4 border border-slate-200 dark:border-slate-800 rounded-md p-3 hover:opacity-80"
+                className="card card-hover flex items-center justify-between gap-4 p-4"
               >
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1.5">
                   <span className="text-sm text-slate-500">
                     {new Date(order._creationTime).toLocaleDateString(
                       "ko-KR",
                     )}
                   </span>
-                  <span className="text-sm font-medium">
+                  <span
+                    className={`badge w-fit ${orderStatusBadgeClass[order.status]}`}
+                  >
                     {orderStatusLabel[order.status]}
                   </span>
                 </div>
@@ -73,10 +73,7 @@ function MyOrdersList() {
       )}
 
       {status === "CanLoadMore" && (
-        <button
-          className="mx-auto bg-foreground text-background text-sm px-4 py-2 rounded-md"
-          onClick={() => loadMore(10)}
-        >
+        <button className="btn-secondary mx-auto" onClick={() => loadMore(10)}>
           더 보기
         </button>
       )}
